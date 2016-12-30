@@ -33,8 +33,8 @@ window.onload = () => {
 		geometry.morphTargets.push({ name: "target" + i, vertices: vertices });
 	}
 
-	var mesh = new THREE.Mesh(geometry, material);
-	scene.add(mesh);
+	var cube = new THREE.Mesh(geometry, material);
+	scene.add(cube);
 
 	var points = new THREE.Geometry(), vertex;
 	for (i = 0; i < 1200; i++) {
@@ -45,33 +45,58 @@ window.onload = () => {
 		points.vertices.push(vertex);
 	}
 
-	var parameters = [
-		[[1, 1, 0.5], 5],
-		//[[0.95, 1, 0.5], 4],
-		//[[0.90, 1, 0.5], 3],
-		//[[0.85, 1, 0.5], 2],
-		//[[0.80, 1, 0.5], 1]
-	];
-	var color, size, materials = [], particles = [];
-	for (i = 0; i < parameters.length; i++) {
-		size = parameters[i][1];
-		materials[i] = new THREE.PointsMaterial({ size });
-		particles[i] = new THREE.Points(points, materials[i]);
-		particles[i].rotation.x = Math.random() * 6;
-		particles[i].rotation.y = Math.random() * 6;
-		particles[i].rotation.z = Math.random() * 6;
-		scene.add(particles[i]);
-	}
+	var particleParams = [[1, 1, 0.5], 5];
+	var particleMaterial0 = new THREE.PointsMaterial({ size: particleParams[1] });
+	var particle = new THREE.Points(points, particleMaterial0);
+	particle.rotation.x = Math.random() * 6;
+	particle.rotation.y = Math.random() * 6;
+	particle.rotation.z = Math.random() * 6;
+	scene.add(particle);
+
+	var particleMaterial1 = new THREE.RawShaderMaterial({
+		vertexShader: document.querySelector('#motionvector-vert').textContent.trim(),
+		fragmentShader: document.querySelector('#motionvector-frag').textContent.trim(),
+		uniforms: {
+			prevModelViewMatrix: { value: new THREE.Matrix4() }
+		}
+	});
 
 	var renderer = new THREE.WebGLRenderer();
 	renderer.setSize(window.innerWidth, window.innerHeight);
-	renderer.setClearColor(0x222222);
+	// renderer.setClearColor(0x222222);
 	document.body.appendChild(renderer.domElement);
 
-	// postprocessing
+	// render target for motion vector
+	var renderTarget = (() => {
+		var options = {
+			format: THREE.RGBFormat,
+			type: THREE.FloatType,
+			minFilter: THREE.NearestFilter,
+			magFilter: THREE.NearestFilter,
+			generateMipmaps: false,
+			stencilBuffer: false
+		};
+		var size = renderer.getSize();
+		target = new THREE.WebGLRenderTarget(size.width, size.height, options);
+		return target;
+	})();
+
 	var composer = new THREE.EffectComposer(renderer);
 	composer.addPass(new THREE.RenderPass(scene, camera));
 
+	// motion blur
+	var blurMaterial = new THREE.RawShaderMaterial({
+		vertexShader: document.querySelector('#motionblur-vert').textContent.trim(),
+		fragmentShader: document.querySelector('#motionblur-frag').textContent.trim(),
+		uniforms: {
+			tDiffuse: { type: 't' },
+			tMotion: { type: 't', value: renderTarget.texture }
+		}
+	});
+	var blurPass = new THREE.ShaderPass(blurMaterial);
+	composer.addPass(blurPass);
+
+	// glitch
 	var glitchPass = new THREE.GlitchPass();
 	glitchPass.renderToScreen = true;
 	composer.addPass(glitchPass);
@@ -79,22 +104,29 @@ window.onload = () => {
 	var mouseX, mouseXOnMouseDown;
 	var targetRotation = 0, targetRotationOnMouseDown = 0;
 
+	var prevModelViewMatrix = new THREE.Matrix4();
+
 	var render = () => {
 		requestAnimationFrame(render);
 
-		mesh.rotation.y += (targetRotation - mesh.rotation.y) * 0.05;
-
+		// particle animation
 		var time = Date.now() * 0.00005;
-		var i, h;
-		for (i = 0; i < materials.length; i++) {
-			color = parameters[i][0];
-			h = (360 * (color[0] + time) % 360) / 360;
-			materials[i].color.setHSL(h, color[1], color[2]);
-		}
+		var particleColor = particleParams[0];
+		var hue = (360 * (particleColor[0] + time) % 360) / 360;
+		particleMaterial0.color.setHSL(hue, particleColor[1], particleColor[2]);
+		particle.rotation.y += 0.005;
 
-		for (i = 0; i < particles.length; i++) {
-			particles[i].rotation.y += 0.005;
-		}
+		// render particle motion vectors
+		particle.material = particleMaterial1;
+		particleMaterial1.uniforms.prevModelViewMatrix.value.copy(prevModelViewMatrix);
+		prevModelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, particle.matrixWorld);
+		scene.remove(cube);
+		renderer.render(scene, camera, renderTarget);
+		scene.add(cube);
+		particle.material = particleMaterial0;
+
+		// cube animation
+		cube.rotation.y += (targetRotation - cube.rotation.y) * 0.05;
 
 		composer.render();
 	};
@@ -110,11 +142,13 @@ window.onload = () => {
 				value += audioArray[j * groupSize + i];
 			}
 			value /= groupSize;
-			mesh.morphTargetInfluences[j] = value * 5;
+			cube.morphTargetInfluences[j] = value * 5;
 		}
 	}
 
-	window.wallpaperRegisterAudioListener(audioListener);
+	if (window.wallpaperRegisterAudioListener) {
+		window.wallpaperRegisterAudioListener(audioListener);
+	}
 
 	var windowHalfX = window.innerWidth / 2;
 

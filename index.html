@@ -1,11 +1,10 @@
 <html>
 
 <head>
-	<title>hellopaper1</title>
 	<style>
 			body { margin: 0; }
 			canvas { width: 100%; height: 100% }
-		</style>
+	</style>
 </head>
 
 <body>
@@ -20,6 +19,66 @@
 	<script src="js/postprocessing/MaskPass.js"></script>
 	<script src="js/postprocessing/ShaderPass.js"></script>
 	<script src="js/postprocessing/GlitchPass.js"></script>
+
+	<script id="motionvector-vert" type="x-shader/x-vertex">
+		uniform mat4 projectionMatrix;
+		uniform mat4 modelViewMatrix;
+		uniform mat4 prevModelViewMatrix;
+		attribute vec4 position;
+		varying vec4 vClipPos;
+		varying vec4 vPrevClipPos;
+		void main() {
+			vClipPos = projectionMatrix * modelViewMatrix * position;
+			vPrevClipPos = projectionMatrix * prevModelViewMatrix * position;
+			gl_Position = vClipPos;
+		}
+	</script>
+
+<script id="motionvector-frag" type="x-shader/x-fragment">
+		// precision declarations for RawShaderMaterial
+		precision mediump float;
+		varying vec4 vClipPos;
+		varying vec4 vPrevClipPos;
+		void main() {
+			vec3 NDCPos = (vClipPos / vClipPos.w).xyz;
+    		vec3 prevNDCPos = (vPrevClipPos / vPrevClipPos.w).xyz;
+    		vec2 motionVector = (NDCPos - prevNDCPos).xy;
+			gl_FragColor = vec4(motionVector, 0.0, 0.0);
+		}
+	</script>
+
+<script id="motionblur-vert" type="x-shader/x-vertex">
+		uniform mat4 projectionMatrix;
+		uniform mat4 modelViewMatrix;
+		attribute vec4 position;
+		attribute vec2 uv;
+		varying vec2 vUv;
+		void main() {
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * position;
+		}
+	</script>
+
+<script id="motionblur-frag" type="x-shader/x-fragment">
+		precision mediump float;
+		varying vec2 vUv;
+		uniform sampler2D tDiffuse;
+		uniform sampler2D tMotion;
+		void main() {
+			vec2 motionVector = texture2D(tMotion, vUv).xy * 0.5;
+    		vec4 finalColor = vec4(0.0);
+			const int samples = 20;
+			for(int i = 0; i < samples; i++) {
+				vec2 offset = motionVector * (float(i) / (float(samples)-1.0) - 0.5);
+				vec4 c = texture2D(tDiffuse, vUv + offset);
+				finalColor += c;
+			}
+			finalColor /= float(samples);
+			// gl_FragColor = vec4(motionVector, 0.0, 1.0);
+			gl_FragColor = finalColor;
+		}
+	</script>
+
 </body>
 
 </html>
