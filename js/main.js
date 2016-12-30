@@ -6,54 +6,40 @@ window.onload = () => {
 	camera.position.set(200, 200, 200);
 	camera.lookAt(scene.position);
 
-	var light = new THREE.PointLight(0xff2200);
-	light.position.set(300, 400, 400);
-	scene.add(light);
+	var pointLight = new THREE.PointLight(0xff2200);
+	pointLight.position.set(400, 400, 400);
+	scene.add(pointLight);
 
-	var light = new THREE.AmbientLight(0x111111);
-	scene.add(light);
+	var pointLight = new THREE.PointLight(0x0022ff);
+	pointLight.position.set(-400, 400, 400);
+	scene.add(pointLight);
 
-	var geometry = new THREE.BoxGeometry(100, 100, 100);
-	var material = new THREE.MeshLambertMaterial({
+	scene.add(new THREE.AmbientLight(0x111111));
+
+	var geoCube = new THREE.BoxGeometry(100, 100, 100);
+	var matCube = new THREE.MeshDepthMaterial({
+		wireframe: true,
 		morphTargets: true
 	});
 
-	// construct 8 blend shapes
 	var i, j;
 	for (i = 0; i < 8; i++) {
 		var vertices = [];
-		for (var v = 0; v < geometry.vertices.length; v++) {
-			vertices.push(geometry.vertices[v].clone());
+		for (var v = 0; v < geoCube.vertices.length; v++) {
+			vertices.push(geoCube.vertices[v].clone());
 			if (v === i) {
 				vertices[vertices.length - 1].x *= 2;
 				vertices[vertices.length - 1].y *= 2;
 				vertices[vertices.length - 1].z *= 2;
 			}
 		}
-		geometry.morphTargets.push({ name: "target" + i, vertices: vertices });
+		geoCube.morphTargets.push({ name: "target" + i, vertices });
 	}
 
-	var cube = new THREE.Mesh(geometry, material);
+	var cube = new THREE.Mesh(geoCube, matCube);
 	scene.add(cube);
 
-	var points = new THREE.Geometry(), vertex;
-	for (i = 0; i < 1200; i++) {
-		vertex = new THREE.Vector3();
-		vertex.x = Math.random() * 1200 - 600;
-		vertex.y = Math.random() * 1200 - 600;
-		vertex.z = Math.random() * 1200 - 600;
-		points.vertices.push(vertex);
-	}
-
-	var particleParams = [[1, 1, 0.5], 5];
-	var particleMaterial0 = new THREE.PointsMaterial({ size: particleParams[1] });
-	var particle = new THREE.Points(points, particleMaterial0);
-	particle.rotation.x = Math.random() * 6;
-	particle.rotation.y = Math.random() * 6;
-	particle.rotation.z = Math.random() * 6;
-	scene.add(particle);
-
-	var particleMaterial1 = new THREE.RawShaderMaterial({
+	var matMotionVector = new THREE.RawShaderMaterial({
 		vertexShader: document.querySelector('#motionvector-vert').textContent.trim(),
 		fragmentShader: document.querySelector('#motionvector-frag').textContent.trim(),
 		uniforms: {
@@ -61,12 +47,104 @@ window.onload = () => {
 		}
 	});
 
+	var geoTriangles = ((count, size, space) => {
+		var geometry = new THREE.BufferGeometry();
+		var positions = new Float32Array(count * 3 * 3);
+		var normals = new Float32Array(count * 3 * 3);
+		var colors = new Float32Array(count * 3 * 3);
+		var color = new THREE.Color();
+		var size2 = size / 2, space2 = space / 2;
+		var pA = new THREE.Vector3();
+		var pB = new THREE.Vector3();
+		var pC = new THREE.Vector3();
+		var cb = new THREE.Vector3();
+		var ab = new THREE.Vector3();
+		var i;
+		for (i = 0; i < positions.length; i += 9) {
+			// positions
+			var x = Math.random() * space - space2;
+			var y = Math.random() * space - space2;
+			var z = Math.random() * space - space2;
+			var ax = x + Math.random() * size - size2;
+			var ay = y + Math.random() * size - size2;
+			var az = z + Math.random() * size - size2;
+			var bx = x + Math.random() * size - size2;
+			var by = y + Math.random() * size - size2;
+			var bz = z + Math.random() * size - size2;
+			var cx = x + Math.random() * size - size2;
+			var cy = y + Math.random() * size - size2;
+			var cz = z + Math.random() * size - size2;
+			positions[i] = ax;
+			positions[i + 1] = ay;
+			positions[i + 2] = az;
+			positions[i + 3] = bx;
+			positions[i + 4] = by;
+			positions[i + 5] = bz;
+			positions[i + 6] = cx;
+			positions[i + 7] = cy;
+			positions[i + 8] = cz;
+			// flat face normals
+			pA.set(ax, ay, az);
+			pB.set(bx, by, bz);
+			pC.set(cx, cy, cz);
+			cb.subVectors(pC, pB);
+			ab.subVectors(pA, pB);
+			cb.cross(ab);
+			cb.normalize();
+			var nx = cb.x;
+			var ny = cb.y;
+			var nz = cb.z;
+			normals[i] = nx;
+			normals[i + 1] = ny;
+			normals[i + 2] = nz;
+			normals[i + 3] = nx;
+			normals[i + 4] = ny;
+			normals[i + 5] = nz;
+			normals[i + 6] = nx;
+			normals[i + 7] = ny;
+			normals[i + 8] = nz;
+			// colors
+			var vx = (x / space) + 0.5;
+			var vy = (y / space) + 0.5;
+			var vz = (z / space) + 0.5;
+			color.setRGB(vx, vy, vz);
+			colors[i] = color.r;
+			colors[i + 1] = color.g;
+			colors[i + 2] = color.b;
+			colors[i + 3] = color.r;
+			colors[i + 4] = color.g;
+			colors[i + 5] = color.b;
+			colors[i + 6] = color.r;
+			colors[i + 7] = color.g;
+			colors[i + 8] = color.b;
+		}
+		function disposeArray() { this.array = null; }
+		geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3).onUpload(disposeArray));
+		geometry.addAttribute('normal', new THREE.BufferAttribute(normals, 3).onUpload(disposeArray));
+		geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3).onUpload(disposeArray));
+		geometry.computeBoundingSphere();
+
+		return geometry;
+	})(4000, 12, 1200);
+
+	var matTriangles = new THREE.MeshPhongMaterial({
+		color: 0xaaaaaa,
+		specular: 0xffffff,
+		shininess: 250,
+		side: THREE.DoubleSide,
+		vertexColors: THREE.VertexColors
+	});
+
+	var triangles = new THREE.Mesh(geoTriangles, matTriangles);
+	scene.add(triangles);
+
 	var renderer = new THREE.WebGLRenderer();
 	renderer.setSize(window.innerWidth, window.innerHeight);
-	// renderer.setClearColor(0x222222);
+	var clearColor = new THREE.Color(0);
+	renderer.setClearColor(clearColor);
 	document.body.appendChild(renderer.domElement);
 
-	// render target for motion vector
+	// render target for motion vectors
 	var renderTarget = (() => {
 		var options = {
 			format: THREE.RGBFormat,
@@ -90,7 +168,8 @@ window.onload = () => {
 		fragmentShader: document.querySelector('#motionblur-frag').textContent.trim(),
 		uniforms: {
 			tDiffuse: { type: 't' },
-			tMotion: { type: 't', value: renderTarget.texture }
+			tMotion: { type: 't', value: renderTarget.texture },
+			fVelocityFactor: { value: 1 }
 		}
 	});
 	var blurPass = new THREE.ShaderPass(blurMaterial);
@@ -101,6 +180,7 @@ window.onload = () => {
 	glitchPass.renderToScreen = true;
 	composer.addPass(glitchPass);
 
+	// interaction
 	var mouseX, mouseXOnMouseDown;
 	var targetRotation = 0, targetRotationOnMouseDown = 0;
 
@@ -109,21 +189,20 @@ window.onload = () => {
 	var render = () => {
 		requestAnimationFrame(render);
 
-		// particle animation
-		var time = Date.now() * 0.00005;
-		var particleColor = particleParams[0];
-		var hue = (360 * (particleColor[0] + time) % 360) / 360;
-		particleMaterial0.color.setHSL(hue, particleColor[1], particleColor[2]);
-		particle.rotation.y += 0.005;
+		// triangles animation
+		triangles.rotation.y += 0.01;
 
-		// render particle motion vectors
-		particle.material = particleMaterial1;
-		particleMaterial1.uniforms.prevModelViewMatrix.value.copy(prevModelViewMatrix);
-		prevModelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, particle.matrixWorld);
+		// render motion vectors (exclude cube)
+		triangles.material = matMotionVector;
+		matMotionVector.uniforms.prevModelViewMatrix.value.copy(prevModelViewMatrix);
+		prevModelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, triangles.matrixWorld);
 		scene.remove(cube);
+		// clear to zero for correct motion blur
+		renderer.setClearColor(0);
 		renderer.render(scene, camera, renderTarget);
+		renderer.setClearColor(clearColor);
 		scene.add(cube);
-		particle.material = particleMaterial0;
+		triangles.material = matTriangles;
 
 		// cube animation
 		cube.rotation.y += (targetRotation - cube.rotation.y) * 0.05;
