@@ -34,10 +34,9 @@ var wallpaperCube = (() => {
 			morphTargets: true
 		});
 
-		var i, v;
-		for (i = 0; i < 8; i++) {
+		for (let i = 0; i < 8; i++) {
 			var vertices = [];
-			for (v = 0; v < geoCube.vertices.length; v++) {
+			for (let v = 0; v < geoCube.vertices.length; v++) {
 				vertices.push(geoCube.vertices[v].clone());
 				if (v === i) {
 					vertices[vertices.length - 1].x *= 2;
@@ -71,8 +70,7 @@ var wallpaperCube = (() => {
 			var pC = new THREE.Vector3();
 			var cb = new THREE.Vector3();
 			var ab = new THREE.Vector3();
-			var i;
-			for (i = 0; i < positions.length; i += 9) {
+			for (let i = 0; i < positions.length; i += 9) {
 				// positions
 				var x = Math.random() * space - space2;
 				var y = Math.random() * space - space2;
@@ -227,10 +225,9 @@ var wallpaperCube = (() => {
 
 	function audioListener(audioArray) {
 		var groupSize = audioArray.length / 8, value;
-		var i, j;
-		for (j = 0; j < 8; j++) {
+		for (let j = 0; j < 8; j++) {
 			value = 0;
-			for (i = 0; i < groupSize; i++) {
+			for (let i = 0; i < groupSize; i++) {
 				value += audioArray[j * groupSize + i];
 			}
 			value /= groupSize;
