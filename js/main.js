@@ -1,3 +1,3 @@
 window.onload = () => {
-	wallpaperCube.start();
+	wallpaperCircle.start();
 };

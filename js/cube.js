@@ -1,8 +1,8 @@
 var wallpaperCube = (() => {
 
 	var scene, camera;
-	var cube, triangles;
 	var renderer, composer, renderTarget;
+	var cube, triangles;
 	var clearColor = new THREE.Color(0);
 	var matMotionVector, matTriangles;
 	var prevModelViewMatrix = new THREE.Matrix4();
