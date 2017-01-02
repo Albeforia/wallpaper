@@ -56,13 +56,7 @@ var wallpaperCircle = (() => {
 		composer.addPass(new THREE.RenderPass(scene, camera));
 
 		// rgb shift
-		var shiftShader = THREE.RGBShiftShader;
-		var shiftMaterial = new THREE.ShaderMaterial({
-			uniforms: THREE.UniformsUtils.clone(shiftShader.uniforms),
-			vertexShader: shiftShader.vertexShader,
-			fragmentShader: shiftShader.fragmentShader
-		});
-		rgbShiftPass = new THREE.ShaderPass(shiftMaterial);
+		rgbShiftPass = new THREE.ShaderPass(THREE.RGBShiftShader);
 		rgbShiftPass.uniforms.amount.value = 0.005;
 		rgbShiftPass.renderToScreen = true;
 		composer.addPass(rgbShiftPass);
