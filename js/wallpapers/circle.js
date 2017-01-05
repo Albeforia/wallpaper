@@ -22,7 +22,7 @@ var wallpaperCircle = (() => {
 
 		circle = new THREE.Object3D();
 		geometries = [];
-		var geometryCount = 80;
+		var geometryCount = 60;
 		var geometrySleeves = [];
 		var geometryTypes = [
 			new THREE.OctahedronGeometry(40, 0)
@@ -98,8 +98,8 @@ var wallpaperCircle = (() => {
 	function audioListener(audioArray) {
 		var value;
 		geometries.forEach((geometry, index) => {
-			// assert(geometryCount === 80)
 			value = (audioArray[2 * index] + audioArray[2 * index + 1]) * 0.5 * 8;
+			value = Math.max(0.01, value);
 			if (clicked) {
 				TweenLite.to(geometry.scale, 0.05, {
 					ease: Power0.easeNone, x: value, y: value, z: value
