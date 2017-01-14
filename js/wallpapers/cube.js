@@ -1,6 +1,6 @@
 var wallpaperCube = (() => {
 
-	var scene, camera;
+	var scene, sceneCube, camera;
 	var renderer, composer, renderTarget;
 	var cube, triangles;
 	var clearColor = new THREE.Color(0);
@@ -13,6 +13,8 @@ var wallpaperCube = (() => {
 	var init = () => {
 		scene = new THREE.Scene();
 		scene.fog = new THREE.Fog(0xefd1b5, 300);
+
+		sceneCube = new THREE.Scene();
 
 		camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 		camera.position.set(200, 200, 200);
@@ -48,7 +50,7 @@ var wallpaperCube = (() => {
 		}
 
 		cube = new THREE.Mesh(geoCube, matCube);
-		scene.add(cube);
+		sceneCube.add(cube);
 
 		matMotionVector = new THREE.RawShaderMaterial({
 			vertexShader: document.querySelector('#motionvector-vert').textContent.trim(),
@@ -153,6 +155,7 @@ var wallpaperCube = (() => {
 		renderer.setClearColor(clearColor);
 		document.body.appendChild(renderer.domElement);
 
+		var size = renderer.getSize();
 		// render target for motion vectors
 		renderTarget = (() => {
 			var options = {
@@ -163,7 +166,6 @@ var wallpaperCube = (() => {
 				generateMipmaps: false,
 				stencilBuffer: false
 			};
-			var size = renderer.getSize();
 			return new THREE.WebGLRenderTarget(size.width, size.height, options);
 		})();
 
@@ -181,7 +183,24 @@ var wallpaperCube = (() => {
 			}
 		});
 		var blurPass = new THREE.ShaderPass(blurMaterial);
-		composer.addPass(blurPass);
+		// composer.addPass(blurPass);
+
+		// dof
+		var dofPass = new THREE.BokehPass(scene, camera, {
+			focus: 1.0,
+			aperture: 0.75,
+			maxblur: 0.01,
+			width: size.width,
+			height: size.height,
+			shape: THREE.BokehShader.shapes['PENTAGON']
+		});
+		composer.addPass(dofPass);
+
+		// cube
+		var cubePass = new THREE.RenderPass(sceneCube, camera);
+		cubePass.clear = false;
+		cubePass.clearDepth = true;
+		composer.addPass(cubePass);
 
 		// glitch
 		var glitchPass = new THREE.GlitchPass();
@@ -202,6 +221,7 @@ var wallpaperCube = (() => {
 		// triangles animation
 		triangles.rotation.y += 0.01;
 
+		/*
 		// render motion vectors (exclude cube)
 		triangles.material = matMotionVector;
 		matMotionVector.uniforms.prevModelViewMatrix.value.copy(prevModelViewMatrix);
@@ -213,6 +233,7 @@ var wallpaperCube = (() => {
 		renderer.setClearColor(clearColor);
 		scene.add(cube);
 		triangles.material = matTriangles;
+		*/
 
 		// cube animation
 		cube.rotation.y += (targetRotation - cube.rotation.y) * 0.05;
