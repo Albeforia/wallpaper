@@ -22,7 +22,7 @@ var wallpaperCircle = (() => {
 
 		circle = new THREE.Object3D();
 		geometries = [];
-		var geometryCount = 60;
+		var geometryCount = 128 / 2;
 		var geometrySleeves = [];
 		var geometryTypes = [
 			new THREE.OctahedronGeometry(40, 0)
@@ -115,6 +115,7 @@ var wallpaperCircle = (() => {
 	}
 
 	function onDocumentClick() {
+		if (Math.abs(shiftX / window.innerWidth) > 0.05) return;
 		if (clicked) {
 			geometries.forEach((geometry, index) => {
 				TweenLite.to(geometry.scale, 1, { x: 1, y: 1, z: 1 });
