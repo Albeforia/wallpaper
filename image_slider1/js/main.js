@@ -12,7 +12,10 @@ window.onload = () => {
 	document.addEventListener('mousemove', onDocumentMouseMove, false);
 
 	img.style.opacity = 1;
-	setInterval(switchImage, 10 * 1000);
+	if (img.dataset.wpBackground) {
+		document.body.style.backgroundColor = '#' + img.dataset.wpBackground;
+	}
+	setInterval(switchImage, 30 * 1000);
 
 	function onWindowResize() {
 		offset_x = (window.innerWidth - img.clientWidth) / 2;
@@ -44,7 +47,12 @@ window.onload = () => {
 		var next = images[current];
 		img = next;
 		onWindowResize();
+		var color = '#696969';
+		if (img.dataset.wpBackground) {
+			color = '#' + img.dataset.wpBackground;
+		}
 		TweenLite.to(curr, 1.2, { opacity: 0, ease: Power0.easeNone });
 		TweenLite.to(next, 1.2, { opacity: 1, ease: Power0.easeNone });
+		TweenLite.to(document.body, 1.2, { backgroundColor: color, ease: Power0.easeNone });
 	}
 }
