@@ -192,7 +192,6 @@ var wallpaperCube = (() => {
 			maxblur: 0.01,
 			width: size.width,
 			height: size.height,
-			shape: THREE.BokehShader.shapes['PENTAGON']
 		});
 		composer.addPass(dofPass);
 
