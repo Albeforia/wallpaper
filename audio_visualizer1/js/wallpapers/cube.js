@@ -9,6 +9,7 @@ var wallpaperCube = (() => {
 	var mouseX, mouseXOnMouseDown;
 	var targetRotation = 0, targetRotationOnMouseDown = 0;
 	var windowHalfX = window.innerWidth / 2;
+	var audioPeakValue = 1;
 
 	var init = () => {
 		scene = new THREE.Scene();
@@ -244,6 +245,8 @@ var wallpaperCube = (() => {
 	// events
 
 	function audioListener(audioArray) {
+		audioNormalize(audioArray);
+
 		var groupSize = audioArray.length / 8, value;
 		for (let j = 0; j < 8; j++) {
 			value = 0;
@@ -251,7 +254,24 @@ var wallpaperCube = (() => {
 				value += audioArray[j * groupSize + i];
 			}
 			value /= groupSize;
-			cube.morphTargetInfluences[j] = value * 5;
+			cube.morphTargetInfluences[j] = value * 2;
+		}
+	}
+
+	function audioNormalize(audioData) {
+		var max = 0;
+
+		// find max value for current frame
+		for (let i = 0; i < 128; i++) {
+			if (audioData[i] > max) max = audioData[i];
+		}
+
+		// adjust ratio to how fast or slow you want normalization to react volume changes
+		audioPeakValue = audioPeakValue * 0.5 + max * 0.5;
+
+		// normalize value
+		for (i = 0; i < 128; i++) {
+			audioData[i] /= audioPeakValue;
 		}
 	}
 

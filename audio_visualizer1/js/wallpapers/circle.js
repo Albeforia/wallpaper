@@ -5,6 +5,7 @@ var wallpaperCircle = (() => {
 	var circle, geometries, radius = 100;
 	var rgbShiftPass, shiftX = 0;
 	var clicked = false;
+	var audioPeakValue = 1;
 
 	var init = () => {
 		scene = new THREE.Scene();
@@ -96,9 +97,11 @@ var wallpaperCircle = (() => {
 	// events
 
 	function audioListener(audioArray) {
+		audioNormalize(audioArray);
+
 		var value;
 		geometries.forEach((geometry, index) => {
-			value = (audioArray[2 * index] + audioArray[2 * index + 1]) * 0.5 * 8;
+			value = (audioArray[2 * index] + audioArray[2 * index + 1]) * 0.5 * 4;
 			value = Math.max(0.01, value);
 			if (clicked) {
 				TweenLite.to(geometry.scale, 0.05, {
@@ -112,6 +115,23 @@ var wallpaperCircle = (() => {
 				TweenLite.to(geometry.scale, 0.05, { ease: Power0.easeNone, z: value });
 			}
 		});
+	}
+
+	function audioNormalize(audioData) {
+		var max = 0;
+
+		// find max value for current frame
+		for (let i = 0; i < 128; i++) {
+			if (audioData[i] > max) max = audioData[i];
+		}
+
+		// adjust ratio to how fast or slow you want normalization to react volume changes
+		audioPeakValue = audioPeakValue * 0.5 + max * 0.5;
+
+		// normalize value
+		for (i = 0; i < 128; i++) {
+			audioData[i] /= audioPeakValue;
+		}
 	}
 
 	function onDocumentClick() {
