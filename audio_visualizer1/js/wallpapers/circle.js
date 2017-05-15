@@ -1,13 +1,17 @@
 var wallpaperCircle = (() => {
 
 	var scene, camera;
-	var renderer, composer;
 	var circle, geometries, radius = 100;
-	var rgbShiftPass, shiftX = 0;
-	var clicked = false;
-	var audioPeakValue = 1;
+	var composer;
+	var rgbShiftPass, shiftX;
+	var clicked;
+	var audioPeakValue;
 
-	var init = () => {
+	var init = (renderer) => {
+		shiftX = 0;
+		clicked = false;
+		audioPeakValue = 1;
+
 		scene = new THREE.Scene();
 
 		camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -49,10 +53,6 @@ var wallpaperCircle = (() => {
 
 		scene.add(circle);
 
-		renderer = new THREE.WebGLRenderer();
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		document.body.appendChild(renderer.domElement);
-
 		composer = new THREE.EffectComposer(renderer);
 		composer.addPass(new THREE.RenderPass(scene, camera));
 
@@ -68,12 +68,16 @@ var wallpaperCircle = (() => {
 
 		document.addEventListener('click', onDocumentClick, false);
 		document.addEventListener('mousemove', onDocumentMouseMove, false);
-		window.addEventListener('resize', onWindowResize, false);
+		window.addEventListener('resize', () => {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			composer.setSize(window.innerWidth, window.innerHeight);
+		}, false);
+
 	};
 
 	var render = () => {
-		requestAnimationFrame(render);
-
 		if (window.innerWidth > 600) {
 			TweenLite.to(rgbShiftPass.uniforms.amount, 0.8, {
 				value: (clicked) ? 0.005 : (shiftX / window.innerWidth)
@@ -167,20 +171,10 @@ var wallpaperCircle = (() => {
 		shiftX = event.clientX - window.innerWidth / 2;
 	}
 
-	function onWindowResize() {
-		camera.aspect = window.innerWidth / window.innerHeight;
-		camera.updateProjectionMatrix();
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		composer.setSize(window.innerWidth, window.innerHeight);
-	}
-
 	//-----------------------------------------------------
 
 	return {
-		start: function () {
-			init();
-			render();
-		}
+		init, render
 	};
 
 })();

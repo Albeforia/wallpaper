@@ -1,17 +1,17 @@
 var wallpaperCube = (() => {
 
 	var scene, sceneCube, camera;
-	var renderer, composer, renderTarget;
 	var cube, triangles;
-	var clearColor = new THREE.Color(0);
-	var matMotionVector, matTriangles;
-	var prevModelViewMatrix = new THREE.Matrix4();
+	var composer;
 	var mouseX, mouseXOnMouseDown;
-	var targetRotation = 0, targetRotationOnMouseDown = 0;
-	var windowHalfX = window.innerWidth / 2;
-	var audioPeakValue = 1;
+	var targetRotation, targetRotationOnMouseDown;
+	var audioPeakValue;
 
-	var init = () => {
+	var init = (renderer) => {
+		targetRotation = 0;
+		targetRotationOnMouseDown = 0;
+		audioPeakValue = 1;
+
 		scene = new THREE.Scene();
 		scene.fog = new THREE.Fog(0xefd1b5, 300);
 
@@ -52,14 +52,6 @@ var wallpaperCube = (() => {
 
 		cube = new THREE.Mesh(geoCube, matCube);
 		sceneCube.add(cube);
-
-		matMotionVector = new THREE.RawShaderMaterial({
-			vertexShader: document.querySelector('#motionvector-vert').textContent.trim(),
-			fragmentShader: document.querySelector('#motionvector-frag').textContent.trim(),
-			uniforms: {
-				prevModelViewMatrix: { value: new THREE.Matrix4() }
-			}
-		});
 
 		var geoTriangles = ((count, size, space) => {
 			var geometry = new THREE.BufferGeometry();
@@ -140,7 +132,7 @@ var wallpaperCube = (() => {
 			return geometry;
 		})(4000, 12, 1200);
 
-		matTriangles = new THREE.MeshPhongMaterial({
+		var matTriangles = new THREE.MeshPhongMaterial({
 			color: 0xaaaaaa,
 			specular: 0xffffff,
 			shininess: 250,
@@ -151,41 +143,10 @@ var wallpaperCube = (() => {
 		triangles = new THREE.Mesh(geoTriangles, matTriangles);
 		scene.add(triangles);
 
-		renderer = new THREE.WebGLRenderer();
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		renderer.setClearColor(clearColor);
-		document.body.appendChild(renderer.domElement);
-
-		var size = renderer.getSize();
-		// render target for motion vectors
-		renderTarget = (() => {
-			var options = {
-				format: THREE.RGBFormat,
-				type: THREE.FloatType,
-				minFilter: THREE.NearestFilter,
-				magFilter: THREE.NearestFilter,
-				generateMipmaps: false,
-				stencilBuffer: false
-			};
-			return new THREE.WebGLRenderTarget(size.width, size.height, options);
-		})();
-
 		composer = new THREE.EffectComposer(renderer);
 		composer.addPass(new THREE.RenderPass(scene, camera));
 
-		// motion blur
-		var blurMaterial = new THREE.RawShaderMaterial({
-			vertexShader: document.querySelector('#motionblur-vert').textContent.trim(),
-			fragmentShader: document.querySelector('#motionblur-frag').textContent.trim(),
-			uniforms: {
-				tDiffuse: { type: 't' },
-				tMotion: { type: 't', value: renderTarget.texture },
-				fVelocityFactor: { value: 1 }
-			}
-		});
-		var blurPass = new THREE.ShaderPass(blurMaterial);
-		// composer.addPass(blurPass);
-
+		var size = renderer.getSize();
 		// dof
 		var dofPass = new THREE.BokehPass(scene, camera, {
 			focus: 1.0,
@@ -212,28 +173,18 @@ var wallpaperCube = (() => {
 		}
 
 		document.addEventListener('mousedown', onDocumentMouseDown, false);
-		window.addEventListener('resize', onWindowResize, false);
+		window.addEventListener('resize', () => {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			composer.setSize(window.innerWidth, window.innerHeight);
+		}, false);
+
 	};
 
 	var render = () => {
-		requestAnimationFrame(render);
-
 		// triangles animation
 		triangles.rotation.y += 0.01;
-
-		/*
-		// render motion vectors (exclude cube)
-		triangles.material = matMotionVector;
-		matMotionVector.uniforms.prevModelViewMatrix.value.copy(prevModelViewMatrix);
-		prevModelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, triangles.matrixWorld);
-		scene.remove(cube);
-		// clear to zero for correct motion blur
-		renderer.setClearColor(0);
-		renderer.render(scene, camera, renderTarget);
-		renderer.setClearColor(clearColor);
-		scene.add(cube);
-		triangles.material = matTriangles;
-		*/
 
 		// cube animation
 		cube.rotation.y += (targetRotation - cube.rotation.y) * 0.05;
@@ -279,12 +230,12 @@ var wallpaperCube = (() => {
 		event.preventDefault();
 		document.addEventListener('mousemove', onDocumentMouseMove, false);
 		document.addEventListener('mouseup', onDocumentMouseUp, false);
-		mouseXOnMouseDown = event.clientX - windowHalfX;
+		mouseXOnMouseDown = event.clientX - window.innerWidth / 2;
 		targetRotationOnMouseDown = targetRotation;
 	}
 
 	function onDocumentMouseMove(event) {
-		mouseX = event.clientX - windowHalfX;
+		mouseX = event.clientX - window.innerWidth / 2;
 		targetRotation = targetRotationOnMouseDown + (mouseX - mouseXOnMouseDown) * 0.02;
 	}
 
@@ -293,20 +244,10 @@ var wallpaperCube = (() => {
 		document.removeEventListener('mouseup', onDocumentMouseUp, false);
 	}
 
-	function onWindowResize() {
-		camera.aspect = window.innerWidth / window.innerHeight;
-		camera.updateProjectionMatrix();
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		composer.setSize(window.innerWidth, window.innerHeight);
-	}
-
 	//-----------------------------------------------------
 
 	return {
-		start: function () {
-			init();
-			render();
-		}
+		init, render
 	};
 
 })();
