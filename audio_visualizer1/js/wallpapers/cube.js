@@ -2,15 +2,16 @@ var wallpaperCube = (() => {
 
 	var scene, sceneCube, camera;
 	var cube, triangles;
-	var composer;
+	var composer, glitchPass;
 	var mouseX, mouseXOnMouseDown;
 	var targetRotation, targetRotationOnMouseDown;
-	var audioPeakValue;
+	var audioPeakValue, lastPeakValue, audioStopped;
 
 	var init = (renderer) => {
 		targetRotation = 0;
 		targetRotationOnMouseDown = 0;
 		audioPeakValue = 1;
+		lastPeakValue = 1;
 
 		scene = new THREE.Scene();
 		scene.fog = new THREE.Fog(0xefd1b5, 300);
@@ -164,7 +165,7 @@ var wallpaperCube = (() => {
 		composer.addPass(cubePass);
 
 		// glitch
-		var glitchPass = new THREE.GlitchPass();
+		glitchPass = new THREE.GlitchPass();
 		glitchPass.renderToScreen = true;
 		composer.addPass(glitchPass);
 
@@ -184,7 +185,7 @@ var wallpaperCube = (() => {
 
 	var render = () => {
 		// triangles animation
-		triangles.rotation.y += 0.01;
+		triangles.rotation.y += 0.008;
 
 		// cube animation
 		cube.rotation.y += (targetRotation - cube.rotation.y) * 0.05;
@@ -207,6 +208,21 @@ var wallpaperCube = (() => {
 			value /= groupSize;
 			cube.morphTargetInfluences[j] = value * 2;
 		}
+
+		if (audioStopped) {
+			// disable glitch
+			glitchPass.uniforms['byp'].value = 1;
+		} else {
+			var changeRatio = Math.abs(lastPeakValue - audioPeakValue) / lastPeakValue;
+			if (changeRatio > 0.85) {
+				glitchPass.uniforms['byp'].value = 0;
+			}
+			if (changeRatio < 0.15) {
+				glitchPass.uniforms['byp'].value = 1;
+			}
+		}
+
+		lastPeakValue = audioPeakValue;
 	}
 
 	function audioNormalize(audioData) {
@@ -218,11 +234,17 @@ var wallpaperCube = (() => {
 		}
 
 		// adjust ratio to how fast or slow you want normalization to react volume changes
-		audioPeakValue = audioPeakValue * 0.5 + max * 0.5;
+		audioPeakValue = lastPeakValue * 0.4 + max * 0.6;
+
+		audioStopped = audioPeakValue < 0.005;
 
 		// normalize value
 		for (i = 0; i < 128; i++) {
-			audioData[i] /= audioPeakValue;
+			if (audioStopped) {
+				audioData[i] = 0;
+			} else {
+				audioData[i] /= audioPeakValue;
+			}
 		}
 	}
 
