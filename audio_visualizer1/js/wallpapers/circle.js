@@ -1,11 +1,11 @@
 var wallpaperCircle = (() => {
 
 	var scene, camera;
-	var circle, geometries, radius = 100;
+	var circle, geometries, radius = 85;
 	var composer;
 	var rgbShiftPass, shiftX;
 	var clicked;
-	var audioPeakValue;
+	var audioPeakValue, lastPeakValue, audioStopped;
 
 	var init = (renderer) => {
 		shiftX = 0;
@@ -84,7 +84,7 @@ var wallpaperCircle = (() => {
 			});
 		} else {
 			TweenLite.to(rgbShiftPass.uniforms.amount, 0.8, {
-				value: 0.01
+				value: 0.001
 			});
 		}
 
@@ -105,7 +105,7 @@ var wallpaperCircle = (() => {
 
 		var value;
 		geometries.forEach((geometry, index) => {
-			value = (audioArray[2 * index] + audioArray[2 * index + 1]) * 0.5 * 4;
+			value = (audioArray[2 * index] + audioArray[2 * index + 1]) * 0.8;
 			value = Math.max(0.01, value);
 			if (clicked) {
 				TweenLite.to(geometry.scale, 0.05, {
@@ -116,7 +116,7 @@ var wallpaperCircle = (() => {
 				});
 			}
 			else {
-				TweenLite.to(geometry.scale, 0.05, { ease: Power0.easeNone, z: value });
+				TweenLite.to(geometry.scale, 0.05, { ease: Power0.easeNone, z: value * 2.0 });
 			}
 		});
 	}
@@ -132,9 +132,15 @@ var wallpaperCircle = (() => {
 		// adjust ratio to how fast or slow you want normalization to react volume changes
 		audioPeakValue = audioPeakValue * 0.5 + max * 0.5;
 
+		audioStopped = audioPeakValue < 0.005;
+
 		// normalize value
 		for (i = 0; i < 128; i++) {
-			audioData[i] /= audioPeakValue;
+			if (audioStopped) {
+				audioData[i] = 0;
+			} else {
+				audioData[i] /= audioPeakValue;
+			}
 		}
 	}
 
@@ -157,8 +163,8 @@ var wallpaperCircle = (() => {
 					z: randomInt(0, Math.PI)
 				});
 				TweenLite.to(geometry.position, 1, {
-					x: `+= ${randomInt(-800, 800)}`,
-					y: `+= ${randomInt(-800, 800)}`,
+					x: `+= ${randomInt(-600, 600)}`,
+					y: `+= ${randomInt(-600, 600)}`,
 					z: `+= ${randomInt(-500, -250)}`
 				});
 			});
